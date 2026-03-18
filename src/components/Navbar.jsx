@@ -2,12 +2,14 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import LoginRegisterModal from './LoginRegisterModal';
+import WalletModal from './WalletModal';
 
-export default function Navbar() {
+export default function Navbar({ balance, setBalance }) {
   const [showModal, setShowModal] = useState(false);
   const location = useLocation();
 
   const isLoggedIn = !!localStorage.getItem('token');
+  const [showWallet, setShowWallet] = useState(false);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -33,10 +35,21 @@ export default function Navbar() {
           <Link to="/" className={linkClass('/')}>Home</Link>
           <Link to="/games" className={linkClass('/games')}>Games</Link>
           <Link to="/crash" className={linkClass('/crash')}>Crash</Link>
+          <Link to="/dice" className={linkClass('/Dice')}>Dice</Link>
+          <Link to="/limbo" className={linkClass('/Limbo')}>Limbo</Link>
+          <Link to="/coin" className={linkClass('/Coin')}>CoinFlip</Link>
           {isLoggedIn && (
-            <Link to="/dashboard" className={linkClass('/dashboard')}>
-              Dashboard
-            </Link>
+            <>
+              <Link to="/dashboard" className={linkClass('/dashboard')}>
+                Dashboard
+              </Link>
+              <button
+                onClick={() => setShowWallet(true)}
+                className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition"
+              >
+                Wallet
+              </button>
+            </>
           )}
         </div>
 
@@ -58,6 +71,13 @@ export default function Navbar() {
             </button>
           )}
         </div>
+         {showWallet && (
+          <WalletModal
+            onClose={() => setShowWallet(false)}
+            balance={balance}
+            setBalance={setBalance}
+          />
+          )}
       </nav>
 
       {/* Modal */}

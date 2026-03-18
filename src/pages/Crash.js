@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
 import { isLoggedIn } from '../utils/auth';
 import LoginRegisterModal from '../components/LoginRegisterModal';
+import axios from 'axios';
 
 const socket = io('http://localhost:5000');
 
@@ -19,44 +20,83 @@ export default function Crash() {
   const user = JSON.parse(localStorage.getItem('user'));
 
   useEffect(() => {
+    const userData = localStorage.getItem('user');
+
+    if (userData) {
+      const user = JSON.parse(userData);
+      setBalance(user.balance || 0);
+    }
+  }, []);
+
+  useEffect(() => {
+    // 🔥 CRASH UPDATE
     socket.on('crash:update', (data) => {
       setMultiplier(parseFloat(data.multiplier));
       setCrashed(false);
     });
 
+    // 💥 CRASH EVENT
     socket.on('crash:crash', (data) => {
       setMultiplier(parseFloat(data.multiplier));
       setCrashed(true);
       setGameRunning(false);
 
-      if (!cashedOut && !lostAlertShown) {
-        alert('You lost! 💥');
-        setLostAlertShown(true);
+      setLostAlertShown((prev) => {
+        if (!cashedOut && !prev) {
+          alert('You lost! 💥');
+          return true;
+        }
+        return prev;
+      });
+    });
+
+    // 💰 BET PLACED
+    socket.on('bet:placed', (data) => {
+      setBalance(data.balance);
+
+      const user = JSON.parse(localStorage.getItem('user'));
+      if (user) {
+        localStorage.setItem(
+          'user',
+          JSON.stringify({ ...user, balance: data.balance })
+        );
       }
     });
 
-    socket.on('bet:placed', (data) => {
-      setBalance(data.balance);
-    });
-
+    // 🏆 CASHOUT SUCCESS
     socket.on('cashout:success', (data) => {
       alert(`You won ${data.winAmount.toFixed(2)} 💰`);
       setBalance(data.balance);
+
+      const user = JSON.parse(localStorage.getItem('user'));
+      if (user) {
+        localStorage.setItem(
+          'user',
+          JSON.stringify({ ...user, balance: data.balance })
+        );
+      }
+
       setCashedOut(true);
       setGameRunning(false);
     });
 
+    // ❌ LOST EVENT
     socket.on('bet:lost', () => {
-      if (!lostAlertShown) {
-        alert('You lost! 💥');
-        setLostAlertShown(true);
-      }
+      setLostAlertShown((prev) => {
+        if (!prev) {
+          alert('You lost! 💥');
+          return true;
+        }
+        return prev;
+      });
     });
 
+    // ⚠️ ERROR
     socket.on('bet:error', (err) => {
       alert(err.message);
     });
 
+    // 🧹 CLEANUP (VERY IMPORTANT)
     return () => {
       socket.off('crash:update');
       socket.off('crash:crash');
@@ -65,7 +105,7 @@ export default function Crash() {
       socket.off('bet:lost');
       socket.off('bet:error');
     };
-  }, [cashedOut, lostAlertShown]);
+  }, []); // ✅ RUN ONLY ONCE
 
   const handleStart = () => {
     const userData = localStorage.getItem('user');
