@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
+import { useRef } from 'react';
+
+import axios from 'axios';
 import { io } from 'socket.io-client';
 import { isLoggedIn } from '../utils/auth';
 import LoginRegisterModal from '../components/LoginRegisterModal';
-import axios from 'axios';
+import FairPanel from '../components/FairPanel';
 
 const socket = io('http://localhost:5000');
 
@@ -16,6 +19,12 @@ export default function Crash() {
 
   const [betAmount, setBetAmount] = useState(10);
   const [balance, setBalance] = useState(0);
+  const [nonce, setNonce] = useState(0);
+  const [serverSeedHash, setServerSeedHash] = useState('');
+  const [seed, setSeed] = useState('');
+
+  const cashedOutRef = useRef(false);
+  const lostAlertRef = useRef(false);
 
   const user = JSON.parse(localStorage.getItem('user'));
 
@@ -26,77 +35,69 @@ export default function Crash() {
       const user = JSON.parse(userData);
       setBalance(user.balance || 0);
     }
+    const fetchData = async () => {
+        const res = await axios.post(
+        `http://localhost:5000/api/seed/get`
+        );
+        setServerSeedHash(res.data.seed);
+    };
+    fetchData();
+    setNonce(1);
   }, []);
 
+
   useEffect(() => {
-    // 🔥 CRASH UPDATE
+    cashedOutRef.current = cashedOut;
+    lostAlertRef.current = lostAlertShown;
+  }, [cashedOut, lostAlertShown]);
+
+
+  useEffect(() => {
     socket.on('crash:update', (data) => {
       setMultiplier(parseFloat(data.multiplier));
       setCrashed(false);
     });
 
-    // 💥 CRASH EVENT
     socket.on('crash:crash', (data) => {
       setMultiplier(parseFloat(data.multiplier));
       setCrashed(true);
       setGameRunning(false);
+      
+      setNonce(nonce => nonce + 1);
+      setServerSeedHash(data.hash);
+      setSeed(data.serverSeed);
 
-      setLostAlertShown((prev) => {
-        if (!cashedOut && !prev) {
-          alert('You lost! 💥');
-          return true;
-        }
-        return prev;
-      });
-    });
-
-    // 💰 BET PLACED
-    socket.on('bet:placed', (data) => {
-      setBalance(data.balance);
-
-      const user = JSON.parse(localStorage.getItem('user'));
-      if (user) {
-        localStorage.setItem(
-          'user',
-          JSON.stringify({ ...user, balance: data.balance })
-        );
+      // ✅ use refs instead of state
+      if (!cashedOutRef.current && !lostAlertRef.current) {
+        alert('You lost! 💥');
+        lostAlertRef.current = true;
+        setLostAlertShown(true);
       }
     });
 
-    // 🏆 CASHOUT SUCCESS
+    socket.on('bet:placed', (data) => {
+      setBalance(data.balance);
+    });
+
     socket.on('cashout:success', (data) => {
       alert(`You won ${data.winAmount.toFixed(2)} 💰`);
       setBalance(data.balance);
-
-      const user = JSON.parse(localStorage.getItem('user'));
-      if (user) {
-        localStorage.setItem(
-          'user',
-          JSON.stringify({ ...user, balance: data.balance })
-        );
-      }
-
       setCashedOut(true);
       setGameRunning(false);
     });
 
-    // ❌ LOST EVENT
     socket.on('bet:lost', () => {
-      setLostAlertShown((prev) => {
-        if (!prev) {
-          alert('You lost! 💥');
-          return true;
-        }
-        return prev;
-      });
+      if (!lostAlertRef.current) {
+        alert('You lost! 💥');
+        lostAlertRef.current = true;
+        setLostAlertShown(true);
+      }
     });
 
-    // ⚠️ ERROR
     socket.on('bet:error', (err) => {
       alert(err.message);
     });
 
-    // 🧹 CLEANUP (VERY IMPORTANT)
     return () => {
       socket.off('crash:update');
       socket.off('crash:crash');
@@ -105,22 +106,30 @@ export default function Crash() {
       socket.off('bet:lost');
       socket.off('bet:error');
     };
-  }, []); // ✅ RUN ONLY ONCE
+  }, []);
+
 
   const handleStart = () => {
     const userData = localStorage.getItem('user');
-    console.log(userData);
     if (!isLoggedIn() || !userData) {
         setShowModal(true);
         return;
     }
+  setLostAlertShown(false);
+  lostAlertRef.current = false;
+  setCashedOut(false);
+  cashedOutRef.current = false;
 
     socket.emit('crash:bet', {
         userId: user._id,
         amount: betAmount,
+        
   });
 
-  socket.emit('crash:start');
+  socket.emit('crash:start',{
+    clinetSeed: localStorage.getItem("clientSeed"),
+    nonce: nonce
+  });
 
   setCashedOut(false);
   setCrashed(false);
@@ -171,6 +180,7 @@ export default function Crash() {
           Cash Out
         </button>
       </div>
+      <FairPanel nonce = {nonce} serverSeedHash = {serverSeedHash} seed = {seed} />
 
       {showModal && <LoginRegisterModal onClose={() => setShowModal(false)} />}
     </div>

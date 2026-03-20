@@ -9,6 +9,7 @@ import Dice from './pages/Dice';
 import { useState, useEffect } from 'react';
 import Limbo from './pages/Limbo';
 import CoinFlip from './pages/CoinFlip';
+import HiLo from './pages/HiLo';
 
 function App() {
    const [balance, setBalance] = useState(0);
@@ -30,6 +31,7 @@ function App() {
         <Route path="/dice" element={<Dice />} />
         <Route path="/limbo" element={<Limbo />} />
         <Route path="/coin" element={<CoinFlip />} />
+        <Route path="/hilo" element={<HiLo />} />
       </Routes>
     </Router>
   );

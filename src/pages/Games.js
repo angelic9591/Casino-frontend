@@ -1,11 +1,9 @@
 // src/pages/Games.js
-import { useEffect, useState } from 'react';
-import axios from '../services/api';
-import { isLoggedIn } from '../utils/auth';
+import { useState } from 'react';
 import LoginRegisterModal from '../components/LoginRegisterModal';
 
 export default function Games() {
-  const [games, setGames] = useState([]);
+  const [games] = useState([]);
   const [showModal, setShowModal] = useState(false);
 
 //   useEffect(() => {

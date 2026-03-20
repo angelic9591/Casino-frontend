@@ -38,6 +38,7 @@ export default function Navbar({ balance, setBalance }) {
           <Link to="/dice" className={linkClass('/Dice')}>Dice</Link>
           <Link to="/limbo" className={linkClass('/Limbo')}>Limbo</Link>
           <Link to="/coin" className={linkClass('/Coin')}>CoinFlip</Link>
+          <Link to="/hilo" className={linkClass('/HiLo')}>HiLo</Link>
           {isLoggedIn && (
             <>
               <Link to="/dashboard" className={linkClass('/dashboard')}>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import FairPanel from '../components/FairPanel';
 
 export default function CoinFlip() {
   const [bet, setBet] = useState(10);
@@ -7,10 +8,21 @@ export default function CoinFlip() {
   const [result, setResult] = useState('');
   const [message, setMessage] = useState('');
   const [balance, setBalance] = useState(0);
+  const [nonce, setNonce] = useState(0);
+  const [serverSeedHash, setServerSeedHash] = useState('');
+  const [seed, setSeed] = useState('');
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user'));
     if (user) setBalance(user.balance);
+    const fetchData = async () => {
+        const res = await axios.post(
+        `http://localhost:5000/api/seed/get`
+        );
+        setServerSeedHash(res.data.seed);
+    };
+    fetchData();
+    setNonce(1);
   }, []);
 
   const handleFlip = async () => {
@@ -28,8 +40,14 @@ export default function CoinFlip() {
           userId: user._id,
           betAmount: Number(bet),
           choice,
+          clinetSeed: localStorage.getItem("clientSeed"),
+          nonce: nonce
         }
       );
+      
+      setNonce(nonce + 1);
+      setServerSeedHash(res.data.hash);
+      setSeed(res.data.serverSeed);
 
       setResult(res.data.result);
       setMessage(res.data.message);
@@ -105,6 +123,7 @@ export default function CoinFlip() {
           </div>
         )}
       </div>
+      <FairPanel nonce = {nonce} serverSeedHash = {serverSeedHash} seed = {seed} />
     </div>
   );
 }
